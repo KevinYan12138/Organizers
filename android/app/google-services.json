@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "187138278940",
+    "firebase_url": "https://organizer-1f720.firebaseio.com",
+    "project_id": "organizer-1f720",
+    "storage_bucket": "organizer-1f720.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:187138278940:android:4eaf022452e5269492c1d9",
+        "android_client_info": {
+          "package_name": "com.guanwenyan.organizer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "187138278940-gs4tmssaegte2d4akt570l31lfulfqa9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZxUKz1KnPjnqAvPFuxa36LHDECFMxQhU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "187138278940-gs4tmssaegte2d4akt570l31lfulfqa9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "187138278940-gsknsgup7dbm5al6h1e1o7bh9b08kpev.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.guanwenyan.organizationmanager"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
