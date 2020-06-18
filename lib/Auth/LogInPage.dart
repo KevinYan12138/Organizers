@@ -156,7 +156,7 @@ Widget _showOrganizations() {
         autofocus: false,
         decoration: InputDecoration(
           icon: Icon(Icons.email) ,
-          hintText: 'Enter Organization Name',
+          hintText: 'Organization Name',
           hintStyle: TextStyle(color: Colors.grey),
           border: InputBorder.none
         ),
