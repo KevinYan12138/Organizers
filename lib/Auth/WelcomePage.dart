@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:organizer/Auth/UserRepository.dart';
 import 'package:provider/provider.dart';
 import 'package:upgrader/upgrader.dart';
@@ -11,6 +12,9 @@ class WelcomePage extends StatefulWidget {
 
 class _WelcomePageState extends State<WelcomePage> {
    GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+
+   AppUpdateInfo _updateInfo;
+   bool _flexibleUpdateAvailable = false;
 
 // @override
 //   void didChangeDependencies() {
@@ -37,11 +41,22 @@ class _WelcomePageState extends State<WelcomePage> {
 //   }  
 @override
     void initState() {
+      if (Platform.isAndroid){
+      checkForUpdate();
+      }
       new Future.delayed(const Duration(seconds: 1))
       .then((_)=>_buildSnackBar()
       );
      super.initState();
    }
+
+   Future<void> checkForUpdate() async {
+    InAppUpdate.checkForUpdate().then((info) {
+      setState(() {
+        _updateInfo = info;
+      });
+    }).catchError((e) => print(e));
+  } 
    
    _buildSnackBar (){
     final user = Provider.of<UserRepository>(context, listen: false);
@@ -103,12 +118,19 @@ class _WelcomePageState extends State<WelcomePage> {
             ),
           ]
         ),
-        Platform.isIOS ? 
+        if (Platform.isIOS)
         Container(
           width: size.width,
           height: size.height,
           child: Center(child: UpgradeAlert(child: Center(child: Text(''))))
-          ): Container()
+          ),
+        if (Platform.isAndroid)
+          _updateInfo.updateAvailable == true ? InAppUpdate.startFlexibleUpdate().then((_) {
+            setState(() {
+              _flexibleUpdateAvailable = true;
+            });
+            InAppUpdate.completeFlexibleUpdate();
+          }) : Container()
         ]
       ),
     ));

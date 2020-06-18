@@ -342,6 +342,8 @@ PODS:
     - Flutter
   - image_picker (0.0.1):
     - Flutter
+  - in_app_update (0.0.1):
+    - Flutter
   - leveldb-library (1.22)
   - nanopb (0.3.9011):
     - nanopb/decode (= 0.3.9011)
@@ -391,6 +393,7 @@ DEPENDENCIES:
   - flutter_plugin_android_lifecycle (from `.symlinks/plugins/flutter_plugin_android_lifecycle/ios`)
   - image_downloader (from `.symlinks/plugins/image_downloader/ios`)
   - image_picker (from `.symlinks/plugins/image_picker/ios`)
+  - in_app_update (from `.symlinks/plugins/in_app_update/ios`)
   - package_info (from `.symlinks/plugins/package_info/ios`)
   - path_provider (from `.symlinks/plugins/path_provider/ios`)
   - path_provider_linux (from `.symlinks/plugins/path_provider_linux/ios`)
@@ -467,6 +470,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_downloader/ios"
   image_picker:
     :path: ".symlinks/plugins/image_picker/ios"
+  in_app_update:
+    :path: ".symlinks/plugins/in_app_update/ios"
   package_info:
     :path: ".symlinks/plugins/package_info/ios"
   path_provider:
@@ -531,6 +536,7 @@ SPEC CHECKSUMS:
   GTMSessionFetcher: 43b8b64263023d4f32caa0b40f4c8bfa3c5f36d8
   image_downloader: 73e190d6c9f286f2649554051348d9cb319cd4b3
   image_picker: 66aa71bc96850a90590a35d4c4a2907b0d823109
+  in_app_update: 16e877e205f4360264cb536e3a6481f0d90299e1
   leveldb-library: 55d93ee664b4007aac644a782d11da33fba316f7
   nanopb: 18003b5e52dab79db540fe93fe9579f399bd1ccd
   package_info: 873975fc26034f0b863a300ad47e7f1ac6c7ec62

@@ -16,8 +16,8 @@ class _LogInPageState extends State<LogInPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String _email;
-  String _password;
-  var value;
+  String _password; 
+  var _value;
   SharedPreferences prefs; 
 
   bool _validateAndSave() {
@@ -49,6 +49,19 @@ class _LogInPageState extends State<LogInPage> {
      );
      user.setErrorMessage = null;
    }
+
+   static Future<bool> _ifOrganizationExists(String value) async{
+    bool exist;
+    await Firestore.instance.collection('organizations').document(value).get().then((doc) {
+      if(doc.exists){
+        exist = true;
+      }else{
+        exist = false;
+      }
+    });
+    return exist;
+    
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,42 +101,68 @@ class _LogInPageState extends State<LogInPage> {
     );
   }
 
-Widget _showOrganizations(){
-  Size size = MediaQuery.of(context).size;
-  return StreamBuilder<QuerySnapshot>(
-      stream: Firestore.instance.collection('organizations').snapshots(),
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.hasError)return new Text('Error: ${snapshot.error}');
-        switch (snapshot.connectionState) {
-          case ConnectionState.waiting: return new Text('Loading...');
-          default:
-            return Container(
-              width: size.width * 0.8,
-              margin: EdgeInsets.symmetric(vertical: 10),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.lightBlue[100],
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: new DropdownButton<String>(
-                isExpanded: true,
-                hint: Text('Organization Name'),
-                value: value,
-                onChanged: (String newValue) {
-                  setState(() {
-                    value = newValue;
-                  });
-                },
-                items: snapshot.data.documents.map((DocumentSnapshot document) {
-                  return new DropdownMenuItem<String>(
-                    value: document['name'],
-                    child: new Text(document['name']),
-                  );
-                }).toList(),
-              ),
-            );
-        }
-      },
+// Widget _showOrganizations(){
+//   Size size = MediaQuery.of(context).size;
+//   return StreamBuilder<QuerySnapshot>(
+//       stream: Firestore.instance.collection('organizations').snapshots(),
+//       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+//         if (snapshot.hasError)return new Text('Error: ${snapshot.error}');
+//         switch (snapshot.connectionState) {
+//           case ConnectionState.waiting: return new Text('Loading...');
+//           default:
+//             return Container(
+//               width: size.width * 0.8,
+//               margin: EdgeInsets.symmetric(vertical: 10),
+//               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+//               decoration: BoxDecoration(
+//                 color: Colors.lightBlue[100],
+//                 borderRadius: BorderRadius.circular(30),
+//               ),
+//               child: new DropdownButton<String>(
+//                 isExpanded: true,
+//                 hint: Text('Organization Name'),
+//                 value: value,
+//                 onChanged: (String newValue) {
+//                   setState(() {
+//                     value = newValue;
+//                   });
+//                 },
+//                 items: snapshot.data.documents.map((DocumentSnapshot document) {
+//                   return new DropdownMenuItem<String>(
+//                     value: document['name'],
+//                     child: new Text(document['name']),
+//                   );
+//                 }).toList(),
+//               ),
+//             );
+//         }
+//       },
+//     );
+//   }
+
+Widget _showOrganizations() {
+    Size size = MediaQuery.of(context).size;
+    return Container(
+      width: size.width * 0.8,
+      margin: EdgeInsets.symmetric(vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.lightBlue[100],
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: TextFormField(
+        maxLines: 1,
+        keyboardType: TextInputType.emailAddress,
+        autofocus: false,
+        decoration: InputDecoration(
+          icon: Icon(Icons.email) ,
+          hintText: 'Enter Organization Name',
+          hintStyle: TextStyle(color: Colors.grey),
+          border: InputBorder.none
+        ),
+        validator: (value) => value.isEmpty ? 'Organization can\'t be empty' : null,
+        onSaved: (value) => _value = value,
+      ),
     );
   }
 
@@ -193,16 +232,17 @@ Widget _showEmailInput() {
       side: BorderSide(color: Colors.lightBlue) 
 ),
         onPressed: () async {
-          if(value != null){
-          final user = Provider.of<UserRepository>(context, listen: false);
           if (_validateAndSave()) {
+            await _ifOrganizationExists(_value).then((isTrue)async{
+              if(isTrue == true){
+            final user = Provider.of<UserRepository>(context, listen: false);
             SharedPreferences pref = await SharedPreferences.getInstance();
-            await pref.setString('organization', value);
+            await pref.setString('organization', _value);
 
-            final snapShot = await Firestore.instance.collection('users').document(value).collection('users').document(_email).get();
+            final snapShot = await Firestore.instance.collection('users').document(_value).collection('users').document(_email).get();
 
                 if (snapShot == null ||!snapShot.exists){
-                  user.setErrorMessage = 'You have not joined $value yet';
+                  user.setErrorMessage = 'You have not joined $_value yet';
                   user.goToWelcome();
                 }else{
               String id = await user.signIn(_email, _password);
@@ -211,10 +251,10 @@ Widget _showEmailInput() {
 
               await pref.setString("id", id);
 
-              Firestore.instance.collection('users').document(value).collection('users').document(_email).updateData({
+              Firestore.instance.collection('users').document(_value).collection('users').document(_email).updateData({
                 'password': _password,
               });
-              DocumentReference documentReference =Firestore.instance.collection('users').document(value).collection('users').document(_email);
+              DocumentReference documentReference =Firestore.instance.collection('users').document(_value).collection('users').document(_email);
               documentReference.get().then((snapshot) async {
                 if (snapshot.exists) {
                   await pref.setString('username', snapshot.data['username']);
@@ -225,11 +265,12 @@ Widget _showEmailInput() {
                 } 
               });
               }
-            } 
+            }
+            }else{
+              _scaffoldKey.currentState.showSnackBar(new SnackBar(content: Text('Organization doesn\'t exist')));
+            }
+            }); 
             }  
-        }else{
-          _scaffoldKey.currentState.showSnackBar(new SnackBar(content: Text('Please Choose a Organization')));
-        }
         },
         child: new Text('LOGIN',style: new TextStyle(fontSize: 13.0, color: Colors.white))
       ),
