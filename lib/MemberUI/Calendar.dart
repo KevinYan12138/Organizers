@@ -4,14 +4,16 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:rate_my_app/rate_my_app.dart';
 import 'dart:io' show Platform;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:upgrader/upgrader.dart';
 
 import 'EventsView.dart';
 
 class Calendar extends StatefulWidget {
   @override
-  _CalendarState createState() => _CalendarState();
+  _CalendarState createState() => _CalendarState(); 
 }
 
 class _CalendarState extends State<Calendar> {
@@ -23,6 +25,8 @@ class _CalendarState extends State<Calendar> {
   QuerySnapshot _userEventSnapshot;
   int _beginMonthPadding = 0;
   String organization;
+
+  RateMyApp rateMyApp = RateMyApp(minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
 
   _CalendarState() {
     _dateTime = DateTime.now();
@@ -41,6 +45,13 @@ class _CalendarState extends State<Calendar> {
   void initState() {
     super.initState();
     readLocal();
+
+    rateMyApp.init().then((_){
+      if(rateMyApp.shouldOpenDialog){
+        rateMyApp.showRateDialog(context, title: 'Show Support', 
+        message: 'The developer of this app is a student, please give this app a 5 star rating to encourage the developer!'
+      );}
+    });
 
     if(Platform.isAndroid || Platform.isIOS){
 
@@ -157,114 +168,126 @@ class _CalendarState extends State<Calendar> {
 
     return new Scaffold(
         backgroundColor: Colors.white,
-        body: new FutureBuilder(
-            future: _getCalendarData(),
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              switch (snapshot.connectionState) {
-                case ConnectionState.none:
-                case ConnectionState.waiting:
-                  return new LinearProgressIndicator();
-                case ConnectionState.done:
-                  return new Column(
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          IconButton(
-                            icon: Icon(
-                              Icons.chevron_left,
-                              color: Colors.black,
-                              size: 30,
-                            ),
-                            onPressed: _previousMonthSelected,
-                          ),
-                          Spacer(
-                            flex: 1,
-                          ),
-                          FittedBox(
-                            fit: BoxFit.contain,
-                            child: new Text(
-                              getMonthName(_dateTime.month) +
-                                  " " +
-                                  _dateTime.year.toString(),
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Spacer(),
-                          IconButton(
+        body: Stack(
+          children: [
+            new FutureBuilder(
+              future: _getCalendarData(),
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                switch (snapshot.connectionState) {
+                  case ConnectionState.none:
+                  case ConnectionState.waiting:
+                    return new LinearProgressIndicator();
+                  case ConnectionState.done:
+                    return new Column(
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            IconButton(
                               icon: Icon(
-                                Icons.chevron_right,
+                                Icons.chevron_left,
                                 color: Colors.black,
                                 size: 30,
                               ),
-                              onPressed: _nextMonthSelected),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 20,
-                      ),
-                      new GridView.count(
-                        crossAxisCount: numWeekDays,
-                        shrinkWrap: true,
-                        scrollDirection: Axis.vertical,
-                        children: List.generate(7, (index) {
-                          return new Container(
-                              //margin: const EdgeInsets.all(2.0),
-                              //padding: const EdgeInsets.all(2.0),
-                              //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
-                              child: new Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  buildDayName(index)
-                                ],
-                              ));
-                        }),
-                      ),
-                      SizedBox(
-                        height: 40,
-                      ),
-                      Flexible(
-                        child: new GridView.count(
+                              onPressed: _previousMonthSelected,
+                            ),
+                            Spacer(
+                              flex: 1,
+                            ),
+                            FittedBox(
+                              fit: BoxFit.contain,
+                              child: new Text(
+                                getMonthName(_dateTime.month) +
+                                    " " +
+                                    _dateTime.year.toString(),
+                                style: TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Spacer(),
+                            IconButton(
+                                icon: Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
+                                onPressed: _nextMonthSelected),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        new GridView.count(
                           crossAxisCount: numWeekDays,
-                          //childAspectRatio: (itemWidth / itemHeight),
                           shrinkWrap: true,
                           scrollDirection: Axis.vertical,
-                          children: List.generate(
-                              getNumberOfDaysInMonth(_dateTime.month),
-                              (index) {
-                            int dayNumber = index + 1;
-                            return new GestureDetector(
-                                // Used for handling tap on each day view
-                                onTap: () => _onDayTapped(
-                                    dayNumber - _beginMonthPadding),
-                                child: new Container(
-                                    //margin: const EdgeInsets.all(2.0),
-                                    //padding: const EdgeInsets.all(2.0),
-                                    //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
-                                    child: new Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: <Widget>[
-                                        buildDayNumberWidget(dayNumber),
-                                        buildDayEventInfoWidget(dayNumber),
-                                      ],
-                                    )));
+                          children: List.generate(7, (index) {
+                            return new Container(
+                                //margin: const EdgeInsets.all(2.0),
+                                //padding: const EdgeInsets.all(2.0),
+                                //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
+                                child: new Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    buildDayName(index)
+                                  ],
+                                ));
                           }),
                         ),
-                      )
-                    ],
-                  );
-                  break;
-                default:
-                  if (snapshot.hasError)
-                    return new Text('Error: ${snapshot.error}');
-                  else
-                    return new Text('Result: ${snapshot.data}');
-              }
-            }));
+                        SizedBox(
+                          height: 40,
+                        ),
+                        Flexible(
+                          child: new GridView.count(
+                            crossAxisCount: numWeekDays,
+                            //childAspectRatio: (itemWidth / itemHeight),
+                            shrinkWrap: true,
+                            scrollDirection: Axis.vertical,
+                            children: List.generate(
+                                getNumberOfDaysInMonth(_dateTime.month),
+                                (index) {
+                              int dayNumber = index + 1;
+                              return new GestureDetector(
+                                  // Used for handling tap on each day view
+                                  onTap: () => _onDayTapped(
+                                      dayNumber - _beginMonthPadding),
+                                  child: new Container(
+                                      //margin: const EdgeInsets.all(2.0),
+                                      //padding: const EdgeInsets.all(2.0),
+                                      //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
+                                      child: new Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: <Widget>[
+                                          buildDayNumberWidget(dayNumber),
+                                          buildDayEventInfoWidget(dayNumber),
+                                        ],
+                                      )));
+                            }),
+                          ),
+                        )
+                      ],
+                    );
+                    break;
+                  default:
+                    if (snapshot.hasError)
+                      return new Text('Error: ${snapshot.error}');
+                    else
+                      return new Text('Result: ${snapshot.data}');
+                }
+              }),
+            if (Platform.isIOS)
+            UpgradeAlert(
+              showIgnore: false,
+              child: Center(
+                child: Container(child: Text(''))
+              )
+            ),
+          ]
+        )
+    );
   }
   Text buildDayName(int index){
     return new Text(getDayName(index), style: TextStyle(fontSize: 20),textAlign: TextAlign.center,);

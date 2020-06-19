@@ -4,13 +4,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:organizer/ManagerUI/addEvent.dart';
+import 'package:rate_my_app/rate_my_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:upgrader/upgrader.dart';
 
 class ManagerEvents extends StatefulWidget {
-  @override
+  @override 
   _ManagerEventsState createState() => _ManagerEventsState();
 }
-
+ 
 class _ManagerEventsState extends State<ManagerEvents> {
   
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
@@ -24,12 +26,21 @@ class _ManagerEventsState extends State<ManagerEvents> {
 
     setState(() {});
   }
+
+  RateMyApp rateMyApp = RateMyApp(minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
   
 
   @override
   void initState() {
     super.initState();
     readLocal();
+
+    rateMyApp.init().then((_){
+      if(rateMyApp.shouldOpenDialog){
+        rateMyApp.showRateDialog(context, title: 'Show Support', 
+        message: 'The developer of this app is a student, please give this app a 5 star rating to encourage the developer!'
+      );}
+    });
 
     if (Platform.isAndroid || Platform.isIOS) {
       _firebaseMessaging.configure(
@@ -127,17 +138,28 @@ class _ManagerEventsState extends State<ManagerEvents> {
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-      body: StreamBuilder(
-          stream: Firestore.instance.collection('events').document(organization).collection('events').snapshots(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if (!snapshot.hasData) return const Text('Loading...');
-            final int eventCount = snapshot.data.documents.length;
-            return ListView.builder(
-              itemCount: eventCount,
-              itemBuilder: (context, index) =>
-                  _buildListItem(context, snapshot.data.documents[index]),
-            );
-          }),
+      body: Stack(
+        children: [
+          StreamBuilder(
+            stream: Firestore.instance.collection('events').document(organization).collection('events').snapshots(),
+            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+              if (!snapshot.hasData) return const Text('Loading...');
+              final int eventCount = snapshot.data.documents.length;
+              return ListView.builder(
+                itemCount: eventCount,
+                itemBuilder: (context, index) =>
+                    _buildListItem(context, snapshot.data.documents[index]),
+              );
+            }),
+          if (Platform.isIOS)
+            UpgradeAlert(
+              showIgnore: false,
+              child: Center(
+                child: Container(child: Text(''))
+              )
+            ),
+        ]
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: ()=> Navigator.push(context, MaterialPageRoute(builder: (context) =>AddEvent())),
         icon: Icon(Icons.add),

@@ -165,7 +165,7 @@ class _JoinMoreOrganizationsState extends State<JoinMoreOrganizations> {
         keyboardType: TextInputType.emailAddress,
         autofocus: false,
         decoration: InputDecoration(
-          icon: Icon(Icons.email) ,
+          icon: Icon(Icons.business) ,
           hintText: 'Organization Name',
           hintStyle: TextStyle(color: Colors.grey),
           border: InputBorder.none

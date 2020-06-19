@@ -43,6 +43,14 @@ class _WelcomePageState extends State<WelcomePage> {
     void initState() {
       if (Platform.isAndroid){
       checkForUpdate();
+      if(_updateInfo.updateAvailable == true){
+          InAppUpdate.startFlexibleUpdate().then((_) {
+            setState(() {
+              _flexibleUpdateAvailable = true;
+              InAppUpdate.completeFlexibleUpdate();
+            });
+          });
+          }
       }
       new Future.delayed(const Duration(seconds: 1))
       .then((_)=>_buildSnackBar()
@@ -119,18 +127,12 @@ class _WelcomePageState extends State<WelcomePage> {
           ]
         ),
         if (Platform.isIOS)
-        Container(
-          width: size.width,
-          height: size.height,
-          child: Center(child: UpgradeAlert(child: Center(child: Text(''))))
-          ),
-        if (Platform.isAndroid)
-          _updateInfo.updateAvailable == true ? InAppUpdate.startFlexibleUpdate().then((_) {
-            setState(() {
-              _flexibleUpdateAvailable = true;
-            });
-            InAppUpdate.completeFlexibleUpdate();
-          }) : Container()
+        UpgradeAlert(
+          showIgnore: false,
+          child: Center(
+            child: Container(child: Text(''))
+          )
+        ),
         ]
       ),
     ));
