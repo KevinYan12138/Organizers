@@ -1,45 +1,71 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:organizer/ManagerUI/addEvent.dart';
 import 'package:rate_my_app/rate_my_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:upgrader/upgrader.dart';
 
 class ManagerEvents extends StatefulWidget {
-  @override 
+  @override
   _ManagerEventsState createState() => _ManagerEventsState();
 }
- 
+
 class _ManagerEventsState extends State<ManagerEvents> {
-  
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
 
   SharedPreferences prefs;
   String organization;
+  DateTime androidUpdatedTime;
+  int _androidUpdatedTime;
+
+  AppUpdateInfo _updateInfo;
+  bool _flexibleUpdateAvailable = false;
 
   void readLocal() async {
     prefs = await SharedPreferences.getInstance();
     organization = prefs.getString('organization') ?? '';
+    _androidUpdatedTime = prefs.getInt('androidUpdatedTime') ?? DateTime.now().millisecondsSinceEpoch;
+    androidUpdatedTime = DateTime.fromMillisecondsSinceEpoch(_androidUpdatedTime);
+
+    if (Platform.isAndroid) {
+      if (androidUpdatedTime == null ||
+          androidUpdatedTime.isBefore(DateTime.now()) ||
+          androidUpdatedTime.isAtSameMomentAs(DateTime.now())) checkForUpdate();
+    }
 
     setState(() {});
   }
 
-  RateMyApp rateMyApp = RateMyApp(minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
-  
+  RateMyApp rateMyApp = RateMyApp(
+      minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
+
+  Future<void> checkForUpdate() async {
+    InAppUpdate.checkForUpdate().then((info) async {
+      if (info.updateAvailable) {
+        await prefs.setInt('androidUpdatedTime', DateTime.now().add(new Duration(days: 3)).millisecondsSinceEpoch);
+
+        InAppUpdate.startFlexibleUpdate();
+        InAppUpdate.completeFlexibleUpdate();
+      }
+    }).catchError((e) => print(e));
+  }
 
   @override
   void initState() {
     super.initState();
     readLocal();
 
-    rateMyApp.init().then((_){
-      if(rateMyApp.shouldOpenDialog){
-        rateMyApp.showRateDialog(context, title: 'Show Support', 
-        message: 'The developer of this app is a student, please give this app a 5 star rating to encourage the developer!'
-      );}
+    rateMyApp.init().then((_) {
+      if (rateMyApp.shouldOpenDialog) {
+        rateMyApp.showRateDialog(context,
+            title: 'Enjoying Organizers?',
+            message: 'If you like this app, please take a little bit of your time to review it !\nIt really helps us and it shouldn\'t take you more than one minute :)');
+      }
     });
 
     if (Platform.isAndroid || Platform.isIOS) {
@@ -56,7 +82,8 @@ class _ManagerEventsState extends State<ManagerEvents> {
       );
 
       _firebaseMessaging.requestNotificationPermissions(
-          const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false));
+          const IosNotificationSettings(
+              sound: true, badge: true, alert: true, provisional: false));
       _firebaseMessaging.onIosSettingsRegistered
           .listen((IosNotificationSettings settings) {
         print("Settings registered: $settings");
@@ -67,12 +94,19 @@ class _ManagerEventsState extends State<ManagerEvents> {
         print('push token: ' + token);
 
         FirebaseUser user = await FirebaseAuth.instance.currentUser();
-        QuerySnapshot snapshot = await Firestore.instance.collection('users').document(organization).collection('users')
+        QuerySnapshot snapshot = await Firestore.instance
+            .collection('users')
+            .document(organization)
+            .collection('users')
             .where('email', isEqualTo: user.email)
             .getDocuments();
 
         snapshot.documents.forEach((doc) {
-          Firestore.instance.collection('users').document(organization).collection('users').document(doc.documentID)
+          Firestore.instance
+              .collection('users')
+              .document(organization)
+              .collection('users')
+              .document(doc.documentID)
               .updateData({'token': token});
         });
       });
@@ -120,7 +154,10 @@ class _ManagerEventsState extends State<ManagerEvents> {
                   VerticalDivider(),
                 ],
               ),
-              title: Text(document['title'], maxLines: null,),
+              title: Text(
+                document['title'],
+                maxLines: null,
+              ),
               subtitle: Text(document['description'], maxLines: null),
               trailing: Icon(Icons.delete),
               onTap: () {
@@ -133,41 +170,38 @@ class _ManagerEventsState extends State<ManagerEvents> {
     );
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-      body: Stack(
-        children: [
+        body: Stack(children: [
           StreamBuilder(
-            stream: Firestore.instance.collection('events').document(organization).collection('events').snapshots(),
-            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-              if (!snapshot.hasData) return const Text('Loading...');
-              final int eventCount = snapshot.data.documents.length;
-              return ListView.builder(
-                itemCount: eventCount,
-                itemBuilder: (context, index) =>
-                    _buildListItem(context, snapshot.data.documents[index]),
-              );
-            }),
+              stream: Firestore.instance
+                  .collection('events')
+                  .document(organization)
+                  .collection('events')
+                  .snapshots(),
+              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                if (!snapshot.hasData) return const Text('Loading...');
+                final int eventCount = snapshot.data.documents.length;
+                return ListView.builder(
+                  itemCount: eventCount,
+                  itemBuilder: (context, index) =>
+                      _buildListItem(context, snapshot.data.documents[index]),
+                );
+              }),
           if (Platform.isIOS)
             UpgradeAlert(
-              showIgnore: false,
-              child: Center(
-                child: Container(child: Text(''))
-              )
-            ),
-        ]
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: ()=> Navigator.push(context, MaterialPageRoute(builder: (context) =>AddEvent())),
-        icon: Icon(Icons.add),
-        label: Text('Add Event'),
-        backgroundColor: Colors.red,
-      )
-    );
-  } 
+                showIgnore: false,
+                child: Center(child: Container(child: Text('')))),
+        ]),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => Navigator.push(
+              context, MaterialPageRoute(builder: (context) => AddEvent())),
+          icon: Icon(Icons.add),
+          label: Text('Add Event'),
+          backgroundColor: Colors.red,
+        ));
+  }
 
   String getMonthName(int month) {
     switch (month) {

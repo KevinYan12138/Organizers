@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:rate_my_app/rate_my_app.dart';
 import 'dart:io' show Platform;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,82 +15,113 @@ import 'EventsView.dart';
 
 class Calendar extends StatefulWidget {
   @override
-  _CalendarState createState() => _CalendarState(); 
+  _CalendarState createState() => _CalendarState();
 }
 
 class _CalendarState extends State<Calendar> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
   SharedPreferences prefs;
-  
+
   DateTime _dateTime;
+  DateTime androidUpdatedTime;
+  int _androidUpdatedTime;
   QuerySnapshot _userEventSnapshot;
   int _beginMonthPadding = 0;
   String organization;
 
-  RateMyApp rateMyApp = RateMyApp(minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
+  AppUpdateInfo _updateInfo;
+  bool _flexibleUpdateAvailable = false;
+
+  RateMyApp rateMyApp = RateMyApp(
+      minLaunches: 30, remindLaunches: 10, minDays: 14, remindDays: 3);
 
   _CalendarState() {
     _dateTime = DateTime.now();
     setMonthPadding();
   }
 
+  Future<void> checkForUpdate() async {
+    InAppUpdate.checkForUpdate().then((info) async {
+      if (info.updateAvailable) {
+        await prefs.setInt('androidUpdatedTime',DateTime.now().add(new Duration(days: 3)).millisecondsSinceEpoch);
+
+        InAppUpdate.startFlexibleUpdate();
+        InAppUpdate.completeFlexibleUpdate();
+      }
+    }).catchError((e) => print(e));
+  }
+
   void readLocal() async {
     prefs = await SharedPreferences.getInstance();
     organization = prefs.getString('organization') ?? '';
+    _androidUpdatedTime = prefs.getInt('androidUpdatedTime') ?? DateTime.now().millisecondsSinceEpoch;
+    androidUpdatedTime = DateTime.fromMillisecondsSinceEpoch(_androidUpdatedTime);
 
+    if (Platform.isAndroid) {
+      if (androidUpdatedTime == null || androidUpdatedTime.isBefore(DateTime.now())||androidUpdatedTime.isAtSameMomentAs(DateTime.now())) 
+      checkForUpdate();
+    }
     setState(() {});
   }
 
-  
   @override
   void initState() {
     super.initState();
     readLocal();
 
-    rateMyApp.init().then((_){
-      if(rateMyApp.shouldOpenDialog){
-        rateMyApp.showRateDialog(context, title: 'Show Support', 
-        message: 'The developer of this app is a student, please give this app a 5 star rating to encourage the developer!'
-      );}
+    rateMyApp.init().then((_) {
+      if (rateMyApp.shouldOpenDialog) {
+        rateMyApp.showRateDialog(context,
+            title: 'Enjoying Organizers?',
+            message: 'If you like this app, please take a little bit of your time to review it !\nIt really helps us and it shouldn\'t take you more than one minute :)');
+      }
     });
 
-    if(Platform.isAndroid || Platform.isIOS){
+    if (Platform.isAndroid || Platform.isIOS) {
+      _firebaseMessaging.configure(
+        onMessage: (Map<String, dynamic> message) async {
+          print("******** - onMessage: $message");
+        },
+        onLaunch: (Map<String, dynamic> message) async {
+          print("******** - onLaunch: $message");
+        },
+        onResume: (Map<String, dynamic> message) async {
+          print("******** - onResume: $message");
+        },
+      );
 
-    _firebaseMessaging.configure(
-      onMessage: (Map<String, dynamic> message) async {
-        print("******** - onMessage: $message");
-      },
-      onLaunch: (Map<String, dynamic> message) async {
-        print("******** - onLaunch: $message");
-      },
-      onResume: (Map<String, dynamic> message) async {
-        print("******** - onResume: $message");
-      },
-    );
-
-    _firebaseMessaging.requestNotificationPermissions(
-        const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: true));
-    _firebaseMessaging.onIosSettingsRegistered.listen((IosNotificationSettings settings) {
-      print("Settings registered: $settings");
-    });
-
-    _firebaseMessaging.getToken().then((String token) async {
-      assert(token != null);
-      print('push token: ' + token);
-
-      FirebaseUser user = await FirebaseAuth.instance.currentUser();
-      QuerySnapshot snapshot = await Firestore.instance.collection('users').document(organization).collection('users')
-          .where('email', isEqualTo: user.email).getDocuments();
-
-      snapshot.documents.forEach((doc) {
-        Firestore.instance.collection('users').document(organization).collection('users').document(doc.documentID)
-            .updateData({'token': token});
+      _firebaseMessaging.requestNotificationPermissions(
+          const IosNotificationSettings(
+              sound: true, badge: true, alert: true, provisional: true));
+      _firebaseMessaging.onIosSettingsRegistered
+          .listen((IosNotificationSettings settings) {
+        print("Settings registered: $settings");
       });
-    });
+
+      _firebaseMessaging.getToken().then((String token) async {
+        assert(token != null);
+        print('push token: ' + token);
+
+        FirebaseUser user = await FirebaseAuth.instance.currentUser();
+        QuerySnapshot snapshot = await Firestore.instance
+            .collection('users')
+            .document(organization)
+            .collection('users')
+            .where('email', isEqualTo: user.email)
+            .getDocuments();
+
+        snapshot.documents.forEach((doc) {
+          Firestore.instance
+              .collection('users')
+              .document(organization)
+              .collection('users')
+              .document(doc.documentID)
+              .updateData({'token': token});
+        });
+      });
     }
   }
-  
 
   void setMonthPadding() {
     _beginMonthPadding =
@@ -100,7 +133,10 @@ class _CalendarState extends State<Calendar> {
     FirebaseUser currentUser = await _auth.currentUser();
 
     if (currentUser != null) {
-      QuerySnapshot userEvents = await Firestore.instance.collection('events').document(organization).collection('events')
+      QuerySnapshot userEvents = await Firestore.instance
+          .collection('events')
+          .document(organization)
+          .collection('events')
           .where('month', isGreaterThanOrEqualTo: _dateTime.month)
           .getDocuments();
 
@@ -168,9 +204,8 @@ class _CalendarState extends State<Calendar> {
 
     return new Scaffold(
         backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            new FutureBuilder(
+        body: Stack(children: [
+          new FutureBuilder(
               future: _getCalendarData(),
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 switch (snapshot.connectionState) {
@@ -226,12 +261,10 @@ class _CalendarState extends State<Calendar> {
                                 //padding: const EdgeInsets.all(2.0),
                                 //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
                                 child: new Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: <Widget>[
-                                    buildDayName(index)
-                                  ],
-                                ));
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: <Widget>[buildDayName(index)],
+                            ));
                           }),
                         ),
                         SizedBox(
@@ -256,15 +289,14 @@ class _CalendarState extends State<Calendar> {
                                       //padding: const EdgeInsets.all(2.0),
                                       //decoration: new BoxDecoration(border: new Border.all(color: Colors.grey)),
                                       child: new Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: <Widget>[
-                                          buildDayNumberWidget(dayNumber),
-                                          buildDayEventInfoWidget(dayNumber),
-                                        ],
-                                      )));
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: <Widget>[
+                                      buildDayNumberWidget(dayNumber),
+                                      buildDayEventInfoWidget(dayNumber),
+                                    ],
+                                  )));
                             }),
                           ),
                         )
@@ -278,19 +310,19 @@ class _CalendarState extends State<Calendar> {
                       return new Text('Result: ${snapshot.data}');
                 }
               }),
-            if (Platform.isIOS)
+          if (Platform.isIOS)
             UpgradeAlert(
-              showIgnore: false,
-              child: Center(
-                child: Container(child: Text(''))
-              )
-            ),
-          ]
-        )
-    );
+                showIgnore: false,
+                child: Center(child: Container(child: Text('')))),
+        ]));
   }
-  Text buildDayName(int index){
-    return new Text(getDayName(index), style: TextStyle(fontSize: 20),textAlign: TextAlign.center,);
+
+  Text buildDayName(int index) {
+    return new Text(
+      getDayName(index),
+      style: TextStyle(fontSize: 20),
+      textAlign: TextAlign.center,
+    );
   }
 
   Text buildDayNumberWidget(int dayNumber) {
