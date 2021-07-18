@@ -131,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 SizedBox(
                   width: 12,
                 ),
-                (widget.url == 'null')
+                (widget.url == 'null' || widget.url.isEmpty)
                     ? Icon(
                         Icons.account_circle,
                         size: 50,

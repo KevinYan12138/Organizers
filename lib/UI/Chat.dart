@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Chat extends StatefulWidget {
   @override
   _ChatState createState() => _ChatState();
-}
+} 
 
 class _ChatState extends State<Chat> {
   final Firestore firestore = Firestore.instance;
